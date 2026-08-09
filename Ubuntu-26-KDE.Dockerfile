@@ -44,6 +44,9 @@ COPY scripts/install-usb-manager.sh /usr/local/sbin/install-droidspaces-usb-mana
 
 # 复制本仓库内预编译的 anland_kde deb 包
 COPY anland-build/ubuntu2604/*.deb /tmp/anland-build/ubuntu2604/
+# 复制 ksystemstats 修复插件
+COPY ksystemstats-fix/ksystemstats_plugin_kgslgpu.so /tmp/ksystemstats-fix/
+COPY ksystemstats-fix/container/ksystemstats_plugin_containerio.so /tmp/ksystemstats-fix/
 
 # 赋予相关脚本可执行权限
 RUN chmod +x /usr/local/bin/download-firmware /usr/local/sbin/nosnap /etc/profile.d/ds-aliases.sh
@@ -130,6 +133,21 @@ RUN apt-get update && \
     else \
         rm -rf /tmp/anland-build; \
     fi && \
+    ######################################################################################################
+    # ksystemstats 修复插件 (Adreno GPU/磁盘/网络/温度)
+    echo "--> 安装 ksystemstats 修复插件..." && \
+    PLUGDIR=/usr/lib/aarch64-linux-gnu/qt6/plugins/ksystemstats && \
+    mkdir -p "$PLUGDIR" && \
+    for p in ksystemstats_plugin_gpu.so ksystemstats_plugin_disk.so ksystemstats_plugin_network.so; do \
+        if [ -e "$PLUGDIR/$p" ]; then \
+            mv "$PLUGDIR/$p" "$PLUGDIR/$p.distrib"; \
+        fi; \
+    done && \
+    cp /tmp/ksystemstats-fix/ksystemstats_plugin_kgslgpu.so "$PLUGDIR/" && \
+    cp /tmp/ksystemstats-fix/ksystemstats_plugin_containerio.so "$PLUGDIR/" && \
+    chmod 644 "$PLUGDIR/ksystemstats_plugin_kgslgpu.so" "$PLUGDIR/ksystemstats_plugin_containerio.so" && \
+    rm -rf /tmp/ksystemstats-fix && \
+    echo "--> ksystemstats 修复插件已安装" && \
     ######################################################################################################
     #输入法 fcitx5 (可选)
     if [ "$ENABLE_srf_ARG" = "true" ]; then \
