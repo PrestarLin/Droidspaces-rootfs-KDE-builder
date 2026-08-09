@@ -47,6 +47,8 @@ COPY anland-build/ubuntu2604/*.deb /tmp/anland-build/ubuntu2604/
 # 复制 ksystemstats 修复插件
 COPY ksystemstats-fix/ksystemstats_plugin_kgslgpu.so /tmp/ksystemstats-fix/
 COPY ksystemstats-fix/container/ksystemstats_plugin_containerio.so /tmp/ksystemstats-fix/
+# 复制 ksystemstats 系统概览配置
+COPY ksystemstats-fix/overview.page /tmp/ksystemstats-fix/
 
 # 赋予相关脚本可执行权限
 RUN chmod +x /usr/local/bin/download-firmware /usr/local/sbin/nosnap /etc/profile.d/ds-aliases.sh
@@ -146,6 +148,9 @@ RUN apt-get update && \
     cp /tmp/ksystemstats-fix/ksystemstats_plugin_kgslgpu.so "$PLUGDIR/" && \
     cp /tmp/ksystemstats-fix/ksystemstats_plugin_containerio.so "$PLUGDIR/" && \
     chmod 644 "$PLUGDIR/ksystemstats_plugin_kgslgpu.so" "$PLUGDIR/ksystemstats_plugin_containerio.so" && \
+    mkdir -p /home/${USERNAME}/.local/share/plasma-systemmonitor && \
+    cp /tmp/ksystemstats-fix/overview.page /home/${USERNAME}/.local/share/plasma-systemmonitor/ && \
+    chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}/.local/share && \
     rm -rf /tmp/ksystemstats-fix && \
     echo "--> ksystemstats 修复插件已安装" && \
     ######################################################################################################
