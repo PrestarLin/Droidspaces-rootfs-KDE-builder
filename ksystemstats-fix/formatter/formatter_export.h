@@ -1,0 +1,4 @@
+#pragma once
+
+#define FORMATTER_EXPORT
+#define FORMATTER_EXPORT_DEPRECATED

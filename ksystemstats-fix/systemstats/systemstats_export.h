@@ -1,0 +1,4 @@
+#pragma once
+
+#define SYSTEMSTATS_EXPORT
+#define SYSTEMSTATS_EXPORT_DEPRECATED
