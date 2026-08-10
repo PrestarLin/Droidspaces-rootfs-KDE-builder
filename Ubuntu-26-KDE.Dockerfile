@@ -44,9 +44,13 @@ COPY scripts/install-usb-manager.sh /usr/local/sbin/install-droidspaces-usb-mana
 
 # 复制本仓库内预编译的 anland_kde deb 包
 COPY anland-build/ubuntu2604/*.deb /tmp/anland-build/ubuntu2604/
-# 复制 ksystemstats 修复插件
-COPY ksystemstats-fix/ksystemstats_plugin_kgslgpu.so /tmp/ksystemstats-fix/
-COPY ksystemstats-fix/container/ksystemstats_plugin_containerio.so /tmp/ksystemstats-fix/
+# 复制 ksystemstats 修复插件源码
+COPY ksystemstats-fix/kgslgpuplugin.cpp /tmp/ksystemstats-fix/
+COPY ksystemstats-fix/metadata.json /tmp/ksystemstats-fix/
+COPY ksystemstats-fix/container/containerplugin.cpp /tmp/ksystemstats-fix/container/
+COPY ksystemstats-fix/container/metadata.json /tmp/ksystemstats-fix/container/
+COPY ksystemstats-fix/systemstats/ /tmp/ksystemstats-fix/systemstats/
+COPY ksystemstats-fix/formatter/ /tmp/ksystemstats-fix/formatter/
 # 复制 ksystemstats 系统概览配置
 COPY ksystemstats-fix/overview.page /tmp/ksystemstats-fix/
 
@@ -138,19 +142,40 @@ RUN apt-get update && \
     ######################################################################################################
     # ksystemstats 修复插件 (Adreno GPU/磁盘/网络/温度)
     echo "--> 安装 ksystemstats 修复插件..." && \
+    apt-get install -y --no-install-recommends qt6-base-dev libkf6coreaddons-dev && \
     PLUGDIR=/usr/lib/aarch64-linux-gnu/qt6/plugins/ksystemstats && \
-    mkdir -p "$PLUGDIR" && \
     for p in ksystemstats_plugin_gpu.so ksystemstats_plugin_disk.so ksystemstats_plugin_network.so; do \
         if [ -e "$PLUGDIR/$p" ]; then \
             mv "$PLUGDIR/$p" "$PLUGDIR/$p.distrib"; \
         fi; \
     done && \
-    cp /tmp/ksystemstats-fix/ksystemstats_plugin_kgslgpu.so "$PLUGDIR/" && \
-    cp /tmp/ksystemstats-fix/ksystemstats_plugin_containerio.so "$PLUGDIR/" && \
+    mkdir -p "$PLUGDIR" && \
+    MOC=/usr/lib/qt6/libexec/moc && \
+    QTDIR=/usr/include/aarch64-linux-gnu/qt6 && \
+    KF6DIR=/usr/include/KF6/KCoreAddons && \
+    SYSSTATS_LIB=/usr/lib/aarch64-linux-gnu/libKSysGuardSystemStats.so.6.6.5 && \
+    ### 编译 GPU 插件
+    cd /tmp/ksystemstats-fix && \
+    $MOC -I. -I$QTDIR -I$QTDIR/QtCore -I$QTDIR/QtDBus -I$KF6DIR kgslgpuplugin.cpp -o kgslgpuplugin.moc && \
+    g++ -std=c++17 -fPIC -Wno-deprecated-declarations -I. -I$QTDIR -I$QTDIR/QtCore -I$QTDIR/QtDBus -I$KF6DIR -c kgslgpuplugin.cpp -o kgslgpuplugin.o && \
+    g++ -fPIC -shared -o ksystemstats_plugin_kgslgpu.so kgslgpuplugin.o -Wl,-rpath-link,/usr/lib/aarch64-linux-gnu $SYSSTATS_LIB -lKF6CoreAddons -lQt6DBus -lQt6Core && \
+    cp ksystemstats_plugin_kgslgpu.so "$PLUGDIR/" && \
+    rm -f kgslgpuplugin.moc kgslgpuplugin.o && \
+    ### 编译容器插件
+    cd /tmp/ksystemstats-fix/container && \
+    $MOC -I. -I.. -I$QTDIR -I$QTDIR/QtCore -I$QTDIR/QtDBus -I$QTDIR/QtNetwork -I$KF6DIR containerplugin.cpp -o containerplugin.moc && \
+    g++ -std=c++17 -fPIC -Wno-deprecated-declarations -I. -I.. -I$QTDIR -I$QTDIR/QtCore -I$QTDIR/QtDBus -I$QTDIR/QtNetwork -I$KF6DIR -c containerplugin.cpp -o containerplugin.o && \
+    g++ -fPIC -shared -o ksystemstats_plugin_containerio.so containerplugin.o -Wl,-rpath-link,/usr/lib/aarch64-linux-gnu $SYSSTATS_LIB -lKF6CoreAddons -lQt6Network -lQt6DBus -lQt6Core && \
+    cp ksystemstats_plugin_containerio.so "$PLUGDIR/" && \
+    rm -f containerplugin.moc containerplugin.o && \
     chmod 644 "$PLUGDIR/ksystemstats_plugin_kgslgpu.so" "$PLUGDIR/ksystemstats_plugin_containerio.so" && \
+    ### 部署概览配置
     mkdir -p /home/${USERNAME}/.local/share/plasma-systemmonitor && \
     cp /tmp/ksystemstats-fix/overview.page /home/${USERNAME}/.local/share/plasma-systemmonitor/ && \
     chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}/.local/share && \
+    ### 清理
+    apt-get purge -y qt6-base-dev libkf6coreaddons-dev && \
+    apt-get autoremove -y && \
     rm -rf /tmp/ksystemstats-fix && \
     echo "--> ksystemstats 修复插件已安装" && \
     ######################################################################################################
