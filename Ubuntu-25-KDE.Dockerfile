@@ -16,6 +16,7 @@ ARG ENABLE_srf_ARG
 ARG ENABLE_tmoe_ARG
 ARG ENABLE_nosnap_ARG
 ARG ENABLE_systemd257_ARG
+ARG ENABLE_homebrew_opencode_ARG
 ARG USERNAME
 ######################################################
 
@@ -39,6 +40,7 @@ COPY scripts/bashrc.sh /etc/profile.d/ds-aliases.sh
 
 # 通用 Droidspaces USB Manager 安装器
 COPY scripts/install-usb-manager.sh /usr/local/sbin/install-droidspaces-usb-manager
+COPY scripts/setup-homebrew-opencode.sh /usr/local/sbin/setup-homebrew-opencode
 
 # 赋予相关脚本可执行权限
 RUN chmod +x /usr/local/bin/download-firmware /usr/local/sbin/nosnap /etc/profile.d/ds-aliases.sh
@@ -151,6 +153,16 @@ RUN sed -i '/en_US.UTF-8/s/^# //' /etc/locale.gen && \
 
 # 为所有 Ubuntu RootFS 安装 Droidspaces USB Manager
 RUN /usr/local/sbin/install-droidspaces-usb-manager --user "${USERNAME}"
+
+# Homebrew + opencode (可选)
+RUN if [ "$ENABLE_homebrew_opencode_ARG" = "true" ]; then \
+        echo "--> [开启] 正在安装 Homebrew 和 opencode..." && \
+        bash /usr/local/sbin/setup-homebrew-opencode "${USERNAME}" && \
+        chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}; \
+    else \
+        echo "--> [跳过] 未开启 Homebrew/opencode"; \
+    fi && \
+    rm -f /usr/local/sbin/setup-homebrew-opencode
 
 
 # 添加环境变量

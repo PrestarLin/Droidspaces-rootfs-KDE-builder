@@ -82,6 +82,11 @@ on:
         required: true
         type: boolean
         default: false
+      enable_homebrew_opencode:
+        description: '自动配置 Homebrew 和 Homebrew 版 opencode'
+        required: true
+        type: boolean
+        default: false
       enable_srf:
         description: '开启 输入法 fcitx5 支持'
         required: true
@@ -337,6 +342,7 @@ jobs:
             -S "${{ inputs.enable_systemd257 }}" \
             -t "${{ inputs.enable_8gen2_wayland }}" \
             -A "${{ needs.setup.outputs.wayland_enabled }}" \
+            -B "${{ inputs.enable_homebrew_opencode }}" \
             -u "${{ inputs.custom_username }}"
 
       - name: 上传构建产物

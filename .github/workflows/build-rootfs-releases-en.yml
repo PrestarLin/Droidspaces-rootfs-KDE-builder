@@ -82,6 +82,11 @@ on:
         required: true
         type: boolean
         default: false
+      enable_homebrew_opencode:
+        description: 'Auto-configure Homebrew and Homebrew-installed opencode'
+        required: true
+        type: boolean
+        default: false
       enable_srf:
         description: 'Enable input method fcitx5 support'
         required: true
@@ -337,6 +342,7 @@ jobs:
             -S "${{ inputs.enable_systemd257 }}" \
             -t "${{ inputs.enable_8gen2_wayland }}" \
             -A "${{ needs.setup.outputs.wayland_enabled }}" \
+            -B "${{ inputs.enable_homebrew_opencode }}" \
             -u "${{ inputs.custom_username }}"
 
       - name: Upload build artifacts

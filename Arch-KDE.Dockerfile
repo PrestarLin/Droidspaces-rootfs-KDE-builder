@@ -17,11 +17,13 @@ ARG ENABLE_docker_ARG
 ARG ENABLE_srf_ARG
 ARG ENABLE_tmoe_ARG
 ARG ENABLE_systemd257_ARG
+ARG ENABLE_homebrew_opencode_ARG
 ARG USERNAME
 ######################################################
 
 COPY scripts/install-usb-manager.sh /usr/local/sbin/install-droidspaces-usb-manager
 COPY scripts/systemd257.sh /usr/local/sbin/systemd257
+COPY scripts/setup-homebrew-opencode.sh /usr/local/sbin/setup-homebrew-opencode
 COPY anland-build/Arch/ /tmp/anland-build/Arch/
 
 RUN sed -i '/^#ParallelDownloads/s/^#//' /etc/pacman.conf && \
@@ -136,6 +138,16 @@ RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
 
 # 为所有 Arch RootFS 安装 Droidspaces USB Manager
 RUN /usr/local/sbin/install-droidspaces-usb-manager --user "${USERNAME}"
+
+# Homebrew + opencode (可选)
+RUN if [ "$ENABLE_homebrew_opencode_ARG" = "true" ]; then \
+        echo "--> [开启] 正在安装 Homebrew 和 opencode..." && \
+        bash /usr/local/sbin/setup-homebrew-opencode "${USERNAME}" && \
+        chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}; \
+    else \
+        echo "--> [跳过] 未开启 Homebrew/opencode"; \
+    fi && \
+    rm -f /usr/local/sbin/setup-homebrew-opencode
 
 # 为 droidspaces 的 su/su -l 入口建立完整的 systemd 用户会话。
 RUN for pam_file in /etc/pam.d/su /etc/pam.d/su-l; do \

@@ -17,6 +17,7 @@ ARG ENABLE_tmoe_ARG
 ARG ENABLE_anland_kde_ARG
 ARG ENABLE_8gen2_wayland_ARG
 ARG ENABLE_systemd257_ARG
+ARG ENABLE_homebrew_opencode_ARG
 ARG USERNAME
 ######################################################
 
@@ -25,6 +26,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # 通用 Droidspaces USB Manager 安装器
 COPY scripts/install-usb-manager.sh /usr/local/sbin/install-droidspaces-usb-manager
 COPY scripts/systemd257.sh /usr/local/sbin/systemd257
+COPY scripts/setup-homebrew-opencode.sh /usr/local/sbin/setup-homebrew-opencode
 
 # 加速下载
 RUN echo "max_parallel_downloads=10" >> /etc/dnf/dnf.conf && \
@@ -163,6 +165,16 @@ RUN if [ "$ENABLE_zh_tz_ARG" = "true" ]; then \
 
 # 为所有 Fedora RootFS 安装 Droidspaces USB Manager
 RUN /usr/local/sbin/install-droidspaces-usb-manager --user "${USERNAME}"
+
+# Homebrew + opencode (可选)
+RUN if [ "$ENABLE_homebrew_opencode_ARG" = "true" ]; then \
+        echo "--> [开启] 正在安装 Homebrew 和 opencode..." && \
+        bash /usr/local/sbin/setup-homebrew-opencode "${USERNAME}" && \
+        chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}; \
+    else \
+        echo "--> [跳过] 未开启 Homebrew/opencode"; \
+    fi && \
+    rm -f /usr/local/sbin/setup-homebrew-opencode
 
 # 添加环境变量
 RUN cat <<'EOF' > /etc/environment
