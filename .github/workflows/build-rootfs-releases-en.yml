@@ -16,6 +16,7 @@ on:
           - 'Fedora-43-KDE'
           - 'Fedora-44-KDE'
           - 'Arch-KDE'
+          - 'ImmortalWrt-24.10-Minimal'
           - 'all'
           - 'all-wayland'
       custom_username:
@@ -183,6 +184,12 @@ jobs:
             Arch-KDE)
               TEMPLATES=$(jq -n -c --arg t "$TARGET" '[$t]')
               WAYLAND_PACKAGE_TARGET="Arch"
+              ;;
+            ImmortalWrt-24.10-Minimal)
+              TEMPLATES=$(jq -n -c --arg t "$TARGET" '[$t]')
+              BUILD_KDE="none"
+              ENABLE_ANLAND_KDE="false"
+              PULSE_AUDIO="none"
               ;;
             *)
               TEMPLATES=$(jq -n -c --arg t "$TARGET" '[$t]')

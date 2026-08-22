@@ -88,6 +88,8 @@ if [ "$BUILD_KDE" = "mobile" ]; then
   DISPLAY_BACKEND="Mobile"
 elif [ "$ENABLE_anland_kde" = "true" ]; then
   DISPLAY_BACKEND="Wayland"
+elif echo "$PREFIX" | grep -qi "immortalwrt"; then
+  DISPLAY_BACKEND="Minimal"
 else
   DISPLAY_BACKEND="X11"
 fi
