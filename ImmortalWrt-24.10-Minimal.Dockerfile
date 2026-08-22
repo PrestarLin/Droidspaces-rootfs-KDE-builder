@@ -2,10 +2,13 @@
 # Android kernels lack nf_tables, so this drops fw4/nftables for iptables-legacy
 # + fw3 (the stack VirtualAP's provision_openwrt() expects).
 
-ARG IMMORTALWRT_VERSION=24.10.6
+# ImmortalWrt snapshot tag (24.10 branch). The Docker Hub does not publish
+# per-point-release tags for the armsr target, so we track the rolling
+# snapshot which always reflects the latest 24.10 release.
+ARG IMMORTALWRT_TAG=armsr-armv8-snapshot
 
 # Stage 1: official ARM64 rootfs as a file source (non-standard platform tag, no RUN here)
-FROM --platform=linux/aarch64_generic immortalwrt/rootfs:armsr-armv8-${IMMORTALWRT_VERSION} AS owrt
+FROM --platform=linux/aarch64_generic immortalwrt/rootfs:${IMMORTALWRT_TAG} AS owrt
 
 # Stage 2: customize on scratch (=build arch) so opkg below runs aarch64 binaries under QEMU
 FROM scratch AS customizer
