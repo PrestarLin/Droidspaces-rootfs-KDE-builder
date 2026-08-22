@@ -6,7 +6,7 @@ ARG IMMORTALWRT_VERSION=24.10.6
 ARG IMMORTALWRT_TARGET=armsr/armv8
 ARG ROOTFS_URL=https://downloads.immortalwrt.org/releases/${IMMORTALWRT_VERSION}/targets/${IMMORTALWRT_TARGET}/immortalwrt-${IMMORTALWRT_VERSION}-${IMMORTALWRT_TARGET/\//-}-rootfs.tar.gz
 
-# Stage 1: download and extract the official ImmortalWrt rootfs tarball
+# Stage 1: download and extract into a clean directory
 FROM alpine:latest AS rootfs
 ARG ROOTFS_URL
 RUN apk add --no-cache curl && \
@@ -15,19 +15,19 @@ RUN apk add --no-cache curl && \
     tar -xzf /rootfs.tar.gz -C /output && \
     rm /rootfs.tar.gz
 
-# Stage 2: customize the rootfs
-FROM alpine:latest AS customizer
+# Stage 2: flatten to scratch so we have a clean base
+FROM scratch AS base
 COPY --from=rootfs /output /
 
+# Stage 3: customize using the rootfs' own shell/tools
+FROM base AS customizer
 RUN <<EOF_RUN
 set -e
 mkdir -p /var/lock /var/run /tmp
 
-# Ensure opkg is in PATH
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 opkg update
 
-# Swap fw4/nftables for fw3/iptables-legacy (Android kernel has x_tables, not nf_tables)
 opkg remove --force-depends \
     firewall4 nftables-json \
     kmod-nft-offload kmod-nft-nat kmod-nft-fib kmod-nft-core || true
@@ -35,17 +35,14 @@ opkg install iptables-zz-legacy ip6tables-zz-legacy firewall coreutils-base64
 ln -sf /usr/sbin/iptables-legacy  /usr/sbin/iptables
 ln -sf /usr/sbin/ip6tables-legacy /usr/sbin/ip6tables
 
-# Android AID groups: root needs these or the kernel blocks AF_INET sockets
 grep -q '^aid_inet:'      /etc/group || echo 'aid_inet:x:3003:root'      >> /etc/group
 grep -q '^aid_net_raw:'   /etc/group || echo 'aid_net_raw:x:3004:root'   >> /etc/group
 grep -q '^aid_net_admin:' /etc/group || echo 'aid_net_admin:x:3005:root' >> /etc/group
 
-# Confirm root's group membership via usermod, then drop shadow-utils
 opkg install shadow-utils
 usermod -a -G aid_inet,aid_net_raw root || true
 opkg remove --force-depends shadow-utils
 
-# Upstream over eth0 (Droidspaces NAT); VirtualAP adds vaplan0 LAN at start time
 cat > /etc/config/network <<'NETEOF'
 config interface 'loopback'
 	option device 'lo'
@@ -58,10 +55,6 @@ config interface 'wan'
 	option proto 'dhcp'
 NETEOF
 
-# fw3 zones: vaplan lives in an isolated 'guest' zone (NOT lan) so hotspot
-# clients reach only the internet (guest -> masqueraded wan/eth0) and never
-# other containers on lan. input REJECT blocks router services by default; we
-# punch holes below for DHCP + DNS (needed for a lease) and LuCI (admin UI).
 cat > /etc/config/firewall <<'FWEOF'
 config defaults
 	option syn_flood '1'
@@ -148,10 +141,9 @@ FWEOF
 echo 'net.ipv4.ip_forward=1' > /etc/sysctl.d/30-virtualap.conf
 echo "Droidspaces/VirtualAP ImmortalWrt image built on $(date)" > /etc/droidspaces
 
-# Trim opkg lists; keep /tmp (resolv.conf symlink + tmpfs at runtime)
 rm -rf /var/opkg-lists/* 2>/dev/null || true
 EOF_RUN
 
-# Stage 3: flatten to scratch for export
+# Stage 4: final export
 FROM scratch AS export
 COPY --from=customizer / /
