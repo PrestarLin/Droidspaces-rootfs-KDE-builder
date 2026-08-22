@@ -2,21 +2,28 @@
 # Android kernels lack nf_tables, so this drops fw4/nftables for iptables-legacy
 # + fw3 (the stack VirtualAP's provision_openwrt() expects).
 
-# ImmortalWrt snapshot tag (24.10 branch). The Docker Hub does not publish
-# per-point-release tags for the armsr target, so we track the rolling
-# snapshot which always reflects the latest 24.10 release.
-ARG IMMORTALWRT_TAG=armsr-armv8-snapshot
+ARG IMMORTALWRT_VERSION=24.10.6
+ARG IMMORTALWRT_TARGET=armsr/armv8
+ARG ROOTFS_URL=https://downloads.immortalwrt.org/releases/${IMMORTALWRT_VERSION}/targets/${IMMORTALWRT_TARGET}/immortalwrt-${IMMORTALWRT_VERSION}-${IMMORTALWRT_TARGET/\//-}-rootfs.tar.gz
 
-# Stage 1: official ARM64 rootfs as a file source (non-standard platform tag, no RUN here)
-FROM --platform=linux/aarch64_generic immortalwrt/rootfs:${IMMORTALWRT_TAG} AS owrt
+# Stage 1: download and extract the official ImmortalWrt rootfs tarball
+FROM alpine:latest AS rootfs
+ARG ROOTFS_URL
+RUN apk add --no-cache curl && \
+    curl -fL --retry 3 "$ROOTFS_URL" -o /rootfs.tar.gz && \
+    tar -xzf /rootfs.tar.gz -C / && \
+    rm /rootfs.tar.gz
 
-# Stage 2: customize on scratch (=build arch) so opkg below runs aarch64 binaries under QEMU
-FROM scratch AS customizer
-COPY --from=owrt / /
+# Stage 2: customize the rootfs
+FROM alpine:latest AS customizer
+COPY --from=rootfs / /
 
 RUN <<EOF_RUN
 set -e
 mkdir -p /var/lock /var/run /tmp
+
+# Ensure opkg is in PATH
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 opkg update
 
 # Swap fw4/nftables for fw3/iptables-legacy (Android kernel has x_tables, not nf_tables)
@@ -91,7 +98,6 @@ config forwarding
 	option src 'guest'
 	option dest 'wan'
 
-# Guest clients need DHCP + DNS from the router itself (input is REJECT)
 config rule
 	option name 'Allow-DHCP-Guest'
 	option src 'guest'
@@ -106,7 +112,6 @@ config rule
 	option dest_port '53'
 	option target 'ACCEPT'
 
-# LuCI reachable from the hotspot (password-protected); router services otherwise blocked
 config rule
 	option name 'Allow-LuCI-Guest'
 	option src 'guest'
