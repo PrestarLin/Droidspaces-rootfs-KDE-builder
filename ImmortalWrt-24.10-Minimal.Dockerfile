@@ -10,13 +10,14 @@ ARG ROOTFS_URL=https://downloads.immortalwrt.org/releases/${IMMORTALWRT_VERSION}
 FROM alpine:latest AS rootfs
 ARG ROOTFS_URL
 RUN apk add --no-cache curl && \
+    mkdir -p /output && \
     curl -fL --retry 3 "$ROOTFS_URL" -o /rootfs.tar.gz && \
-    tar -xzf /rootfs.tar.gz -C / && \
+    tar -xzf /rootfs.tar.gz -C /output && \
     rm /rootfs.tar.gz
 
 # Stage 2: customize the rootfs
 FROM alpine:latest AS customizer
-COPY --from=rootfs / /
+COPY --from=rootfs /output /
 
 RUN <<EOF_RUN
 set -e
