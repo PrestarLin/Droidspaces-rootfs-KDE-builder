@@ -141,15 +141,6 @@ FWEOF
 echo 'net.ipv4.ip_forward=1' > /etc/sysctl.d/30-virtualap.conf
 echo "Droidspaces/VirtualAP ImmortalWrt image built on $(date)" > /etc/droidspaces
 
-# Fix LuCI: remove target="_blank" from menu links so they navigate in the same tab
-for f in /usr/lib/lua/luci/view/header.htm /usr/lib/lua/luci/view/themes/*/header.htm; do
-  [ -f "$f" ] && sed -i 's/target="_blank"//g' "$f" 2>/dev/null || true
-done
-# Also fix luci.js if it generates _blank links
-for f in /usr/lib/lua/luci/view/*.js /www/luci-static/resources/*.js; do
-  [ -f "$f" ] && sed -i 's/_blank//g' "$f" 2>/dev/null || true
-done
-
 rm -rf /var/opkg-lists/* 2>/dev/null || true
 EOF_RUN
 
